@@ -1,1 +1,1 @@
-# team20-cloud-computing-hmwk2
+# team12-cloud-computing-hmwk2
