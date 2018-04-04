@@ -1,5 +1,4 @@
 """
-
 """
 import math
 import dateutil.parser
@@ -43,7 +42,6 @@ def close(session_attributes, fulfillment_state, message):
             'message': message
         }
     }
-    #send_SQS(get_slots(intent_request), 'DiningSuggestion')
     return response
 
 
@@ -126,13 +124,13 @@ def validate_order_restaurants(restaurant_type, date, location, size, time, phon
             return build_validation_result(False, 'DiningTime', 'The business hours of restaurants are from 8 a m. to 23 p m. Can you specify a time during this range?')
             
     if phone is not None:
-        if len(phone) > 11:
-            return build_validation_result(False, 'PhoneNum', None)
+        phone = ''.join(e for e in phone if e.isdigit())
+        if len(phone) != 10:
+            return build_validation_result(False, 'PhoneNum', 'Do you wanna try a different phone number with 10 digits?')
     
     if size is not None and size < 1:
         return build_validation_result(False, 'PeopleNum', 'Invalid number. Please tell me the number of people.')
-            
-
+    
     return build_validation_result(True, None, None)
 
 
@@ -144,7 +142,7 @@ def order_restaurants(intent_request):
     Beyond fulfillment, the implementation of this intent demonstrates the use of the elicitSlot dialog action
     in slot validation and re-prompting.
     """
-
+    
     restaurant_type = get_slots(intent_request)["RestaurantType"]
     date = get_slots(intent_request)["DiningDate"]
     time = get_slots(intent_request)["DiningTime"]
@@ -153,7 +151,7 @@ def order_restaurants(intent_request):
     location = get_slots(intent_request)["Location"]
     price = get_slots(intent_request)["Price"]
     source = intent_request['invocationSource']
-
+    
     if source == 'DialogCodeHook':
         # Perform basic validation on the supplied input slots.
         # Use the elicitSlot dialog action to re-prompt for the first violation detected.
@@ -173,9 +171,9 @@ def order_restaurants(intent_request):
         output_session_attributes = intent_request['sessionAttributes'] if intent_request['sessionAttributes'] is not None else {}
         #if restaurant_type is not None:
         #    output_session_attributes['Price'] = len(restaurant_type) * 5  # Elegant pricing model
-
+    
         return delegate(output_session_attributes, get_slots(intent_request))
-
+    
     # Order the restaurants, and rely on the goodbye message of the bot to define the message to the end user.
     # In a real bot, this would likely involve a call to a backend service.
     
@@ -185,6 +183,22 @@ def order_restaurants(intent_request):
                  {'contentType': 'PlainText',
                   'content': 'Thanks. You will receive a message on your phone short after.'})
 
+
+def thanks(intent_request):
+    thank_message = {
+        'contentType': 'PlainText',
+        'content': 'No problem. Have a nice day.'
+    }
+    return close(intent_request['sessionAttributes'], 'Fulfilled', thank_message)
+    
+
+def greetings(intent_request):
+    greeting_message = {
+        'contentType': 'PlainText',
+        'content': 'Hi~ How can I help you?'
+    }
+    return close(intent_request['sessionAttributes'], 'Fulfilled', greeting_message)
+    
 
 """ --- Intents --- """
 
@@ -199,31 +213,14 @@ def dispatch(intent_request):
     intent_name = intent_request['currentIntent']['name']
 
     # Dispatch to your bot's intent handlers
-    if intent_name == 'DiningSuggestion':
+    if intent_name == 'DiningSuggestions':
         return order_restaurants(intent_request)
-
-    raise Exception('Intent with name ' + intent_name + ' not supported')
-
-
-""" --- Send message to SQS --- """
-
-
-def send_SQS(intent_request, SQS):
-    message = get_slots(intent_request)
-    #logger.debug('In the sender.')
-    # Get the service resource
-    sqs = boto3.resource('sqs')
-
-    # Get the queue
-    queue = sqs.get_queue_by_name(QueueName = SQS)
-
-    # Create a new message
-    queue.send_message(MessageBody = json.dumps(message))
-
-    # The response is NOT a resource, but gives you a message ID and MD5
-    #logger.debug('queue name ={}'.format(queue.attributes['QueueArn'].split(':')[-1]))
-    #print(response.get('MessageId'))
-    #print(response.get('MD5OfMessageBody'))
+    elif intent_name == 'Greeting':
+        return greetings(intent_request)
+    elif intent_name == 'ThankYou':
+        return thanks(intent_request)
+    else:
+        raise Exception('Intent with name ' + intent_name + ' not supported')
 
 
 """ --- Main handler --- """
