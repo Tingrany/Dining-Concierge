@@ -78,6 +78,29 @@ def send_sqs_message(intent_request):
                  {'contentType': 'PlainText',
                   'content': 'Thanks. You will receive a message on your phone short after.'})
 
+def thanks(intent_request):
+    source = intent_request['invocationSource']
+    if source != 'FulfillmentCodeHook':
+        raise Exception('Sorry, we are in the wrong stage')
+        
+    thank_message = {
+        'contentType': 'PlainText',
+        'content': 'No problem. Have a nice day.'
+    }
+    return close(intent_request['sessionAttributes'], 'Fulfilled', thank_message)
+    
+
+def greetings(intent_request):
+    source = intent_request['invocationSource']
+    if source != 'FulfillmentCodeHook':
+        raise Exception('Sorry, we are in the wrong stage')
+        
+    greeting_message = {
+        'contentType': 'PlainText',
+        'content': 'Hi~ How can I help you?'
+    }
+    return close(intent_request['sessionAttributes'], 'Fulfilled', greeting_message)
+    
 
 """ --- Intents --- """
 
@@ -93,6 +116,10 @@ def dispatch(intent_request):
     # Dispatch to your bot's intent handlers
     if intent_name == 'DiningSuggestions':
         return send_sqs_message(intent_request)
+    elif intent_name == 'Greeting':
+        return greetings(intent_request)
+    elif intent_name == 'ThankYou':
+        return thanks(intent_request)
     else:
         raise Exception('Intent with name ' + intent_name + ' not supported')
 

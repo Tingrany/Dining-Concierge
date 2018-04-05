@@ -143,6 +143,11 @@ def order_restaurants(intent_request):
     in slot validation and re-prompting.
     """
     
+    source = intent_request['invocationSource']
+    
+    if source != 'DialogCodeHook':
+        raise Exception('Sorry, we are in the wrong stage')
+        
     restaurant_type = get_slots(intent_request)["RestaurantType"]
     date = get_slots(intent_request)["DiningDate"]
     time = get_slots(intent_request)["DiningTime"]
@@ -150,58 +155,48 @@ def order_restaurants(intent_request):
     phone = get_slots(intent_request)["PhoneNum"]
     location = get_slots(intent_request)["Location"]
     price = get_slots(intent_request)["Price"]
-    source = intent_request['invocationSource']
     
-    if source == 'DialogCodeHook':
-        # Perform basic validation on the supplied input slots.
-        # Use the elicitSlot dialog action to re-prompt for the first violation detected.
-        slots = get_slots(intent_request)
+    # Perform basic validation on the supplied input slots.
+    # Use the elicitSlot dialog action to re-prompt for the first violation detected.
+    slots = get_slots(intent_request)
 
-        validation_result = validate_order_restaurants(restaurant_type, date, location, size, time, phone, price)
-        if not validation_result['isValid']:
-            slots[validation_result['violatedSlot']] = None
-            return elicit_slot(intent_request['sessionAttributes'],
-                               intent_request['currentIntent']['name'],
-                               slots,
-                               validation_result['violatedSlot'],
-                               validation_result['message'])
+    validation_result = validate_order_restaurants(restaurant_type, date, location, size, time, phone, price)
+    if not validation_result['isValid']:
+        slots[validation_result['violatedSlot']] = None
+        return elicit_slot(intent_request['sessionAttributes'],
+                           intent_request['currentIntent']['name'],
+                           slots,
+                           validation_result['violatedSlot'],
+                           validation_result['message'])
 
-        # Pass the price of the restaurants back through session attributes to be used in various prompts defined
-        # on the bot model.
-        output_session_attributes = intent_request['sessionAttributes'] if intent_request['sessionAttributes'] is not None else {}
-        #if restaurant_type is not None:
-        #    output_session_attributes['Price'] = len(restaurant_type) * 5  # Elegant pricing model
-    
-        return delegate(output_session_attributes, get_slots(intent_request))
-    
-    # Order the restaurants, and rely on the goodbye message of the bot to define the message to the end user.
-    # In a real bot, this would likely involve a call to a backend service.
-    
-    send_SQS(intent_request, 'DiningSuggestion')
-    return close(intent_request['sessionAttributes'],
-                 'Fulfilled',
-                 {'contentType': 'PlainText',
-                  'content': 'Thanks. You will receive a message on your phone short after.'})
+    output_session_attributes = intent_request['sessionAttributes'] if intent_request['sessionAttributes'] is not None else {}
+
+    return delegate(output_session_attributes, slots)
 
 
 def thanks(intent_request):
-    thank_message = {
-        'contentType': 'PlainText',
-        'content': 'No problem. Have a nice day.'
-    }
-    return close(intent_request['sessionAttributes'], 'Fulfilled', thank_message)
+    source = intent_request['invocationSource']
+    if source != 'DialogCodeHook':
+        raise Exception('Sorry, we are in the wrong stage')
+        
+    slots = get_slots(intent_request)
+    output_session_attributes = intent_request['sessionAttributes'] if intent_request['sessionAttributes'] is not None else {}
+    
+    return delegate(output_session_attributes, slots)
     
 
 def greetings(intent_request):
-    greeting_message = {
-        'contentType': 'PlainText',
-        'content': 'Hi~ How can I help you?'
-    }
-    return close(intent_request['sessionAttributes'], 'Fulfilled', greeting_message)
+    source = intent_request['invocationSource']
+    if source != 'DialogCodeHook':
+        raise Exception('Sorry, we are in the wrong stage')
     
+    slots = get_slots(intent_request)
+    output_session_attributes = intent_request['sessionAttributes'] if intent_request['sessionAttributes'] is not None else {}
+    
+    return delegate(output_session_attributes, slots)
+
 
 """ --- Intents --- """
-
 
 def dispatch(intent_request):
     """
